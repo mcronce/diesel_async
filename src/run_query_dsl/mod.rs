@@ -1,6 +1,6 @@
 mod utils;
 
-use crate::AsyncConnectionCore;
+use crate::{AsyncConnectionCore, AsyncConnectionWithReturningId};
 use diesel::associations::HasTable;
 use diesel::query_builder::IntoUpdateTarget;
 use diesel::result::QueryResult;
@@ -10,6 +10,8 @@ use futures_core::future::BoxFuture;
 use futures_util::FutureExt;
 use futures_util::{stream, StreamExt, TryStreamExt};
 use std::future::Future;
+
+pub use methods::ExecuteInsertWithReturningId;
 
 /// The traits used by `QueryDsl`.
 ///
@@ -61,6 +63,35 @@ pub mod methods {
             Self: 'query,
         {
             conn.execute_returning_count(query)
+        }
+    }
+
+    pub trait ExecuteInsertWithReturningId<Conn, DB: Backend = <Conn as AsyncConnectionCore>::Backend>
+    where
+        Conn: AsyncConnectionWithReturningId<Backend = DB>,
+    {
+        fn execute_with_returning_id<'conn, 'query>(
+            self,
+            conn: &'conn mut Conn,
+        ) -> <Conn as AsyncConnectionWithReturningId>::ExecuteFuture<'conn, 'query>
+        where
+            Self: 'query;
+    }
+
+    impl<Conn, DB, T> ExecuteInsertWithReturningId<Conn, DB> for T
+    where
+        Conn: AsyncConnectionWithReturningId<Backend = DB>,
+        DB: Backend,
+        T: QueryFragment<DB> + QueryId + Send,
+    {
+        fn execute_with_returning_id<'conn, 'query>(
+            self,
+            conn: &'conn mut Conn,
+        ) -> <Conn as AsyncConnectionWithReturningId>::ExecuteFuture<'conn, 'query>
+        where
+            Self: 'query,
+        {
+            conn.execute_returning_id(self)
         }
     }
 
