@@ -406,3 +406,17 @@ pub trait AsyncConnection: AsyncConnectionCore + Sized {
     /// Set the prepared statement cache size to [`CacheSize`] for this connection
     fn set_prepared_statement_cache_size(&mut self, size: CacheSize);
 }
+
+pub trait AsyncConnectionWithReturningId: AsyncConnection {
+    type ReturnedId;
+    type ExecuteFuture<'conn, 'query>: Future<Output = QueryResult<Self::ReturnedId>> + Send
+    where
+        Self: 'conn;
+
+    fn execute_returning_id<'conn, 'query, T>(
+        &'conn mut self,
+        source: T,
+    ) -> <Self as AsyncConnectionWithReturningId>::ExecuteFuture<'conn, 'query>
+    where
+        T: QueryFragment<Self::Backend> + QueryId + 'query;
+}
