@@ -355,3 +355,18 @@ pub trait AsyncConnection: SimpleAsyncConnection + Sized + Send {
     /// Set a specific [`Instrumentation`] implementation for this connection
     fn set_instrumentation(&mut self, instrumentation: impl Instrumentation);
 }
+
+#[async_trait::async_trait]
+pub trait AsyncConnectionWithReturningId: AsyncConnection {
+    type ReturnedId;
+    type ExecuteFuture<'conn, 'query>: Future<Output = QueryResult<Self::ReturnedId>> + Send
+    where
+        Self: 'conn;
+
+    fn execute_returning_id<'conn, 'query, T>(
+        &'conn mut self,
+        source: T,
+    ) -> <Self as AsyncConnectionWithReturningId>::ExecuteFuture<'conn, 'query>
+    where
+        T: QueryFragment<Self::Backend> + QueryId + 'query;
+}
